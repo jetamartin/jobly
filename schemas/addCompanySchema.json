@@ -1,0 +1,72 @@
+{
+  "default": {},
+  "description": "The root schema comprises the entire JSON document.",
+  "examples": [
+      {
+          "handle": "BB",
+          "name": "BestBuy",
+          "num_employees": 170,
+          "description": "Electronics and Appliance Retailer",
+          "logo_url": "www.bb_logo_url.com"
+      }
+  ],
+  "required": [
+      "handle",
+      "name",
+      "description"
+  ],
+  "title": "The root schema",
+  "properties": {
+      "handle": {
+          "$id": "#/properties/handle",
+          "type": "string",
+          "title": "The handle schema",
+          "description": "Two letters that identify the company.",
+          "default": "",
+          "examples": [
+              "BB"
+          ]
+      },
+      "name": {
+          "default": "",
+          "description": "An explanation about the purpose of this instance.",
+          "examples": [
+              "BestBuy"
+          ],
+          "title": "The name schema",
+          "uniqueItems": true,
+          "required": []
+      },
+      "num_employees": {
+          "$id": "#/properties/num_employees",
+          "type": "integer",
+          "title": "The num_employees schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": 0,
+          "examples": [
+              170
+          ]
+      },
+      "description": {
+          "$id": "#/properties/description",
+          "type": "string",
+          "title": "The description schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": "",
+          "examples": [
+              "Electronics and Appliance Retailer"
+          ]
+      },
+      "logo_url": {
+          "$id": "#/properties/logo_url",
+          "type": "string",
+          "title": "The logo_url schema",
+          "description": "An explanation about the purpose of this instance.",
+          "default": "",
+          "examples": [
+              "www.bb_logo_url.com"
+          ]
+      }
+  },
+  "additionalProperties": true
+}
