@@ -83,7 +83,7 @@ router.post('/', async (req, res, next) => {
 
 router.get('/:handle', async (req, res, next) => {
   const { handle } = req.params
-  debugger;
+  // debugger;
   try {
     const company = await Company.get(handle);
     return res.json({company}); 

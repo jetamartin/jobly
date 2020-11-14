@@ -6,7 +6,8 @@ const isEmpty = require("../helpers/miscellaneous")
 // Validation schema
 
 // POST (aka add)
-const addJobSchema = require("../schemas/addJobSchema.json"); 
+const addJobSchema = require("../schemas/addJobSchema.json");
+const updateJobSchema = require("../schemas/updateJobSchema.json") 
 
 const ExpressError = require("../helpers/expressError")
 const Job = require("../models/jobs");
@@ -21,7 +22,6 @@ const { json } = require("express");
  */
 router.post('/', async (req, res, next) => {
   try {
-    debugger;
     const validateJson = jsonschema.validate(req.body, addJobSchema);
     if (!validateJson.valid) {
       //pass validation errors to error handler
@@ -33,7 +33,6 @@ router.post('/', async (req, res, next) => {
       throw new ExpressError('Required info to create a new company is missing', 400);
     } else {
       const job = await Job.create(req.body);
-      debugger;
       return res.status(201).json({job});
     }
   } catch (error) {
@@ -67,16 +66,17 @@ router.get('/', async (req, res, next) => {
   let jobs;
   try {
 
-    // Replace logic below with logic....
-    // const {search, min_employees, max_employees } = req.query;
-    // let queryParams = req.query;
-    // if ('search' in queryParams) {
-    //   companies = await Company.searchByName(queryParams.search);
-    // } else if ( ('min_employees' in queryParams) || ('max_employees' in queryParams) ) {
-    //   companies = await Company.searchByEmployeeCount(queryParams) 
-    // } else { // No query strings provided just return all companies
-    //   companies = await Company.getAll();
-    // }
+    const {search, min_salary, min_equity } = req.query;
+    let queryParams = req.query;
+    if ('search' in queryParams) {
+      jobs = await Job.searchByJobTitle(queryParams.search);
+    } else if ('min_salary' in queryParams) {
+      jobs = await Job.searchByMinSalary(queryParams.min_salary) 
+    } else if ('min_equity' in queryParams) {
+      jobs = await Job.searchByMinEquity(queryParams.min_equity)
+    } else { // No query strings provided just return all companies
+      jobs = await Job.getAll();
+    }
     return res.json({'jobs': jobs})
 
   } catch (error) {
@@ -84,8 +84,6 @@ router.get('/', async (req, res, next) => {
   }  
 
 })
-
-
 
 /**
  * GET /jobs/:id
@@ -95,6 +93,16 @@ router.get('/', async (req, res, next) => {
  * 
  * It should return JSON of {job: jobData}
  */
+router.get('/:id', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id)
+    const job = await Job.getJob(id);
+    return res.json({job}); 
+  } catch (error) {
+    return next(error)
+  }
+});
+
 
  /**
   * PATCH /jobs/:id
@@ -102,11 +110,43 @@ router.get('/', async (req, res, next) => {
   * 
   * It should return JSON of {job: jobData}
   */
+ router.patch('/:id', async (req, res, next) => {
+
+  try {
+    const id = parseInt(req.params.id)
+    const validateJson = jsonschema.validate(req.body, updateJobSchema);
+    if (!validateJson.valid) {
+      //pass validation errors to error handler
+      let listOfErrors = validateJson.errors.map(error => error.stack);
+      let error = new ExpressError(listOfErrors, 400);
+      return next(error)
+    }
+    if ("id" in req.body) {
+      return next (new ExpressError('ID cannot be included in data to be updated for job', 400))
+    }
+    const job = await Job.updateJob(id, req.body);
+    return res.json({job})
+  } catch (error) {
+
+    return next(error)
+  }
+
+})
 
   /**
    * DELETE /jobs/:id
    * This route deletes a job and returns a message.
    * It should return JSON of { message: "Job deleted" }
    */
+
+  router.delete('/:id', async (req, res, next) => {
+    const id = parseInt(req.params.id)
+    try {
+      const job = await Job.remove(id)
+      return res.json({message: 'Job Deleted'})
+    } catch (error) {
+      return next(error)
+    }
+  });
 
   module.exports = router; 
