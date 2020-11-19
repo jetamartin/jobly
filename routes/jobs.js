@@ -11,8 +11,10 @@ const updateJobSchema = require("../schemas/updateJobSchema.json")
 
 const ExpressError = require("../helpers/expressError")
 const Job = require("../models/jobs");
-const { SECRET_KEY } = require("../config");
-const { json } = require("express");
+// const { SECRET_KEY } = require("../config");
+// const { json } = require("express");
+const { adminRequired, authRequired } = require('../middleware/auth');
+
 
 
 /**
@@ -20,7 +22,7 @@ const { json } = require("express");
  * Creates a new job and returns a new job {job: jobData}
  * 
  */
-router.post('/', async (req, res, next) => {
+router.post('/', adminRequired, async (req, res, next) => {
   try {
     const validateJson = jsonschema.validate(req.body, addJobSchema);
     if (!validateJson.valid) {
@@ -62,7 +64,7 @@ router.post('/', async (req, res, next) => {
  *  return {job: jobData}
  */
 
-router.get('/', async (req, res, next) => {
+router.get('/', authRequired, async (req, res, next) => {
   let jobs;
   try {
 
@@ -93,7 +95,7 @@ router.get('/', async (req, res, next) => {
  * 
  * It should return JSON of {job: jobData}
  */
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', authRequired, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id)
     const job = await Job.getJob(id);
@@ -110,7 +112,7 @@ router.get('/:id', async (req, res, next) => {
   * 
   * It should return JSON of {job: jobData}
   */
- router.patch('/:id', async (req, res, next) => {
+ router.patch('/:id', adminRequired, async (req, res, next) => {
 
   try {
     const id = parseInt(req.params.id)
@@ -139,7 +141,7 @@ router.get('/:id', async (req, res, next) => {
    * It should return JSON of { message: "Job deleted" }
    */
 
-  router.delete('/:id', async (req, res, next) => {
+  router.delete('/:id', adminRequired,  async (req, res, next) => {
     const id = parseInt(req.params.id)
     try {
       const job = await Job.remove(id)

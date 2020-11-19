@@ -42,7 +42,7 @@ beforeEach(async () => {
 });
 
 afterEach(async function () {
-  await db.query("DELETE FROM jobs");
+  await db.query('DELETE FROM jobs');
 });
 
 

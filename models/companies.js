@@ -23,6 +23,11 @@ class Company {
     );
     return companyResults.rows;
   }
+
+  /**
+   * 
+   * @param {*} name 
+   */
   static async searchByName(name) {
     // var nameVal = name1.replace(/"/g, "'");
     // let nameVal = `%${name}%`
@@ -47,6 +52,10 @@ class Company {
 
   }
 
+  /**
+   * 
+   * @param {*} queryParams 
+   */
   static async searchByEmployeeCount(queryParams) {
     const {min_employees, max_employees} = queryParams;
     if (min_employees && max_employees) {
@@ -85,6 +94,11 @@ class Company {
     ); 
     return companyResults.rows;
   }
+
+  /**
+   * 
+   * @param {*} companyInfo 
+   */
   static async create(companyInfo) {
     try {
       const {handle, name, num_employees, description, logo_url } = companyInfo;
@@ -102,6 +116,10 @@ class Company {
     }
   }
 
+  /**
+   * 
+   * @param {*} handle 
+   */
   static async get(handle) { 
     try {
       debugger;
@@ -131,6 +149,11 @@ class Company {
     }
   }
 
+  /**
+   * 
+   * @param {*} handle 
+   * @param {*} data 
+   */
   static async update(handle, data) { 
     try {
       debugger;
@@ -156,6 +179,10 @@ class Company {
     }
   }
 
+  /**
+   * 
+   * @param {*} handle 
+   */
   static async remove(handle) {
     const result = await db.query(
       `DELETE FROM companies 

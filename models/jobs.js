@@ -1,4 +1,4 @@
-/** Message class for message.ly */
+/** Job class for jobly */
 
 const db = require("../db");
 const ExpressError = require("../helpers/expressError");
@@ -7,6 +7,10 @@ const ExpressError = require("../helpers/expressError");
 /** Message on the site. */
 
 class Job {
+  /**
+   * 
+   * @param {*} jobInfo 
+   */
   static async create(jobInfo) {
     try {
       const {title, salary, equity, company_handle } = jobInfo;
@@ -24,6 +28,9 @@ class Job {
     }
   }
 
+  /**
+   * 
+   */
   static async getAll() {
     try {
       const jobResults = await db.query(
@@ -36,6 +43,10 @@ class Job {
     }
   }
 
+  /**
+   * 
+   * @param {*} jobTitle 
+   */
   static async searchByJobTitle(jobTitle) {
     try {
       const jobResults = await db.query(
@@ -56,6 +67,11 @@ class Job {
     }
   
   }
+
+  /**
+   * 
+   * @param {*} minSalary 
+   */
   static async searchByMinSalary(minSalary) {
     try {
       const jobResults = await db.query(
@@ -74,6 +90,11 @@ class Job {
       return error
     }
   }
+
+  /**
+   * 
+   * @param {*} minEquity 
+   */
   static async searchByMinEquity(minEquity) {
     try {
       const jobResults = await db.query(
@@ -93,6 +114,11 @@ class Job {
       return error;
     }
   }
+
+  /**
+   * 
+   * @param {*} id 
+   */
   static async getJob(id) {
     try {
       const jobResults = await db.query(
@@ -112,6 +138,12 @@ class Job {
       return error;
     }
   }
+
+  /**
+   * 
+   * @param {*} id 
+   * @param {*} data 
+   */
   static async updateJob(id, data) {
     try {
       const jobResults = await db.query(
@@ -136,6 +168,11 @@ class Job {
       return error;
     }
   }
+
+  /**
+   * 
+   * @param {*} id 
+   */
   static async remove(id) {
     try {
       const result = await db.query(

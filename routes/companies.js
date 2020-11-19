@@ -15,8 +15,9 @@ const updateCompanySchema = require("../schemas/updateCompanySchema.json");
 const isEmpty = require("../helpers/miscellaneous")
 const ExpressError = require("../helpers/expressError")
 const Company = require("../models/companies");
-const { SECRET_KEY } = require("../config");
-const { json } = require("express");
+// const { SECRET_KEY } = require("../config");
+// const { json } = require("express");
+const { adminRequired, authRequired } = require('../middleware/auth');
 
 
 
@@ -40,7 +41,7 @@ const { json } = require("express");
  *
  **/
 
-router.get('/', async (req, res, next) => {
+router.get('/', authRequired, async (req, res, next) => {
   let companies;
   try {
     const {search, min_employees, max_employees } = req.query;
@@ -59,7 +60,11 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-router.post('/', async (req, res, next) => {
+/**
+ * Add a new company 
+ */
+
+router.post('/', adminRequired, async (req, res, next) => {
   try {
     const validateJson = jsonschema.validate(req.body, addCompanySchema);
     if (!validateJson.valid) {
@@ -72,29 +77,33 @@ router.post('/', async (req, res, next) => {
       throw new ExpressError('Required info to create a new company is missing', 400);
     } else {
       const company = await Company.create(req.body)
-      return res.status(201).json({company});
+      return res.status(201).json({ company });
     }
-
   } catch (error) {
     return next(error)
   }
 
 })
 
-router.get('/:handle', async (req, res, next) => {
+/**
+ * Get information about a specific company using company handle
+ */
+router.get('/:handle', authRequired, async (req, res, next) => {
   const { handle } = req.params
-  // debugger;
   try {
     const company = await Company.get(handle);
-    return res.json({company}); 
-
+    return res.json({ company }); 
   } catch (error) {
     return next(error)
   }
 
 });  
 
-router.patch('/:handle', async (req, res, next) => {
+/**
+ * Update a company's information 
+ */
+
+router.patch('/:handle', adminRequired, async (req, res, next) => {
 
   try {
     const { handle } = req.params;
@@ -108,7 +117,7 @@ router.patch('/:handle', async (req, res, next) => {
     if ("handle" in req.body) {
       return next (new ExpressError('Handle cannot be included in data submitted for company', 400))
     }
-    debugger;
+  
     const company = await Company.update(handle, req.body);
     return res.json({company})
   } catch (error) {
@@ -117,12 +126,14 @@ router.patch('/:handle', async (req, res, next) => {
   }
 
 })
-
-router.delete('/:handle', async (req, res, next) => {
+/**
+ * Delete a company from the database
+ */
+router.delete('/:handle', adminRequired, async (req, res, next) => {
   const { handle } = req.params; 
   try {
     const company = await Company.remove(handle)
-    return res.json({message: 'Company Deleted'})
+    return res.json({ message: 'Company Deleted' })
   } catch (error) {
     return next(error)
   }
