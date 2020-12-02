@@ -16,14 +16,6 @@
           "is_admin": true
       }
   ],
-  "required": [
-      "username",
-      "password",
-      "first_name",
-      "last_name",
-      "email",
-      "is_admin"
-  ],
   "properties": {
       "username": {
           "$id": "#/properties/username",
@@ -94,7 +86,16 @@
           "examples": [
               true
           ]
+      },
+      "_token": {
+        "$id": "/properties/token",
+        "type": "string",
+        "title": "The Token Schema ",
+        "default": "",
+        "examples": [
+          "token123"
+        ]
       }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

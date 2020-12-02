@@ -66,6 +66,7 @@ router.get('/', authRequired, async (req, res, next) => {
 
 router.post('/', adminRequired, async (req, res, next) => {
   try {
+    // debugger;
     const validateJson = jsonschema.validate(req.body, addCompanySchema);
     if (!validateJson.valid) {
       //pass validation errors to error handler
@@ -104,7 +105,7 @@ router.get('/:handle', authRequired, async (req, res, next) => {
  */
 
 router.patch('/:handle', adminRequired, async (req, res, next) => {
-
+  debugger;
   try {
     const { handle } = req.params;
     const validateJson = jsonschema.validate(req.body, updateCompanySchema);

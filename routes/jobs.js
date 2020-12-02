@@ -67,8 +67,7 @@ router.post('/', adminRequired, async (req, res, next) => {
 router.get('/', authRequired, async (req, res, next) => {
   let jobs;
   try {
-
-    const {search, min_salary, min_equity } = req.query;
+    // const {search, min_salary, min_equity } = req.query;
     let queryParams = req.query;
     if ('search' in queryParams) {
       jobs = await Job.searchByJobTitle(queryParams.search);

@@ -1,60 +1,49 @@
 process.env.NODE_ENV = "test"
 const request = require("supertest");
-const { get } = require("../../app");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+
 
 
 const app = require("../../app");
 const db = require("../../db");
+const { SECRET_KEY } = require("../../config");
 
-let usernameVal;
+const {TESTDATA, beforeEachHook, afterEachHook, afterAllHook} = require('./config');
 
 beforeEach(async () => {
-  try {
- 
-    let userResults = await db.query(`
-    INSERT INTO
-      users (username, password, first_name, last_name, email, photo_url, is_admin)
-      VALUES(
-        'johndoe',
-        'pwd1',
-        'John',
-        'Doe',
-        'jdoe@email.com',
-        'www.photos.com/johndoe',
-        false
-      )
-      RETURNING username, password, first_name, last_name, email, photo_url, is_admin
-    `);
-  
-    usernameVal = userResults.rows[0].username;
-  } catch (error) {
-    return error;
-  }
-
+  await beforeEachHook(TESTDATA);
 });
 
 afterEach(async function () {
-  await db.query(`DELETE FROM users`);
+  await afterEachHook();
 });
-
 
 afterAll(async function () {
-  await db.end()
+  await afterAllHook();
 });
 
-// GET  - Retrieve all users
+// GET  - Retrieve all users - Single user in this case
 describe('GET /users', () => {
-  test("Retrieve all users", async () => {
-    const results = await request(app)
-    .get('/users')
-    expect(results.statusCode).toBe(200);
-    expect(results.body.users[0].username).toEqual("johndoe");
-  })
+  jest.setTimeout(3 * 60 * 1000)
+  try {
+    test("Retrieve all users", async () => {
+      const userResults = await request(app)
+        .get('/users')
+        .send({
+          "_token": TESTDATA.userToken
+        });
+      expect(userResults.statusCode).toBe(200);
+      expect(userResults.body.users[0].username).toEqual("johndoe");
+    })
+  } catch (error) {
+    return error
+  }
+
 })
 // POST - Add a user
 describe('POST /users', () => {
   test("Add a user", async () => {
-    // debugger;
     const results = await request(app)
     .post('/users')
     .send({
@@ -66,9 +55,39 @@ describe('POST /users', () => {
       photo_url: 'www.photos.com/janedoe',
       is_admin: false
     });
-    // debugger;
+  
     expect(results.statusCode).toBe(201);
-    expect(results.body.user.username).toEqual("janedoe");
+    const returnedToken = results.body.token;
+    const token = jwt.verify(returnedToken, SECRET_KEY);
+    expect(token.username).toEqual("janedoe");
+  })
+  test("Prevents add a duplicate user", async () => {
+    const results = await request(app)
+    .post('/users')
+    .send({
+      username: 'johndoe',
+      password: 'pwd1',
+      first_name: 'John',
+      last_name: 'Doe',
+      email: 'johndoe@email.com',
+      photo_url: 'www.photos.com/johndoe',
+      is_admin: false
+    });
+  
+    expect(results.statusCode).toBe(400);
+  })
+  test('Prevents creating a user without required password field', async () => {
+    const results = await request(app)
+    .post('/users')
+    .send({
+      username: 'frankdoe',
+      first_name: 'Frank',
+      last_name: 'Doe',
+      email: 'frankdoe@email.com',
+      photo_url: 'www.photos.com/frankdoe',
+      is_admin: false
+    });
+     expect(results.statusCode).toBe(400);
   })
 })
 
@@ -77,39 +96,68 @@ describe('POST /users', () => {
 describe('GET /users/:username', () => {
   test("Retrieve a user by username", async () => {
     const results = await request(app)
-    .get(`/users/${usernameVal}`)
+    .get(`/users/${TESTDATA.currentUsername}`)
+    .send({_token: `${TESTDATA.userToken}` })
     expect(results.statusCode).toBe(200);
     expect(results.body.user.username).toEqual("johndoe");
+  })
+  test("Responds with a 404 if it cannot find the requested user ", async () => {
+    const results = await request(app)
+    .get(`/users/johnnie`)
+    .send({ _token: `${TESTDATA.userToken}`})
+    expect(results.statusCode).toBe(404);
+    // expect(results.body.user.username).toEqual("johndoe");
   })
 })
 
 // PATCH - Update a user 
 describe('PATCH /users/:username', () => {
-  test("Update a field of an existing user", async () => {
+  // jest.setTimeout(3 * 60 * 1000)
+  test("Updates a single a user's first_name with a selective update", async () => {
+    debugger;
     const results = await request(app)
-    .patch(`/users/${usernameVal}`)
+    .patch(`/users/${TESTDATA.currentUsername}`)
     .send({
-      username: 'johndoe',
+      // username: 'johndoe',
       password: 'pwd1',
-      first_name: 'John',
+      first_name: 'Johnathan',
       last_name: 'Doe',
       email: 'jdoe@email.com',
       photo_url: 'www.photos.com/johndoe',
-      is_admin: true
+      // is_admin: true,
+      _token: `${TESTDATA.userToken}`
     });
+    debugger;
     expect(results.statusCode).toBe(200);
-    expect(results.body.user.is_admin).toBeTruthy();
+    expect(results.body.user.first_name).toBe('Johnathan');
   })
+  test("Prevents a bad user update", async () => {
+    debugger;
+    const results = await request(app)
+    .patch(`/users/${TESTDATA.currentUsername}`)
+    .send({
+      nick_name: true, 
+      _token: `${TESTDATA.userToken}`
+    });
+    expect(results.statusCode).toBe(400);
+   })
 })
 
-// // DElETE - Remove a user from the database
+// DElETE - Remove a user from the database
 
 describe('DELETE /users/:username', () => {
   test("Delete a user", async () => {
-    // debugger;
     const results = await request(app)
-    .delete(`/users/${usernameVal}`)
+    .delete(`/users/${TESTDATA.currentUsername}`)
+    .send({_token: TESTDATA.userToken})
     expect(results.statusCode).toBe(200);
     expect(results.body.message).toEqual('User Deleted')
+  })
+  test('Forbids a user from deleting another user', async () => {
+    const results = await request(app)
+    .delete(`/users/janedoe`)
+    .send({_token: TESTDATA.userToken})
+    expect(results.statusCode).toBe(401);
+    expect(results.body.message).toEqual('Unauthorized')
   })
 })

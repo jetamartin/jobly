@@ -14,10 +14,7 @@
       }
   ],
   "required": [
-      "name",
-      "num_employees",
-      "description",
-      "logo_url"
+      "name"
   ],
   "properties": {
       "name": {

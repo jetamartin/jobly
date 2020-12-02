@@ -5,7 +5,9 @@ const jsonschema = require("jsonschema");
 const isEmpty = require("../helpers/miscellaneous")
 // Validation schema
 
-const userSchema = require("../schemas/userSchema.json");
+const userNewSchema = require("../schemas/userNewSchema.json");
+const userUpdateSchema = require("../schemas/userUpdateSchema.json");
+const userAuthSchema =require("../schemas/userAuthSchema.json");
 
 const ExpressError = require("../helpers/expressError")
 const User = require("../models/users");
@@ -22,19 +24,16 @@ const createToken = require("../helpers/createToken");
 router.post('/', async (req, res, next) => {
   try {
     // debugger;
-    const validateJson = jsonschema.validate(req.body, userSchema);
+    const validateJson = jsonschema.validate(req.body, userNewSchema);
     if (!validateJson.valid) {
       //pass validation errors to error handler
       let listOfErrors = validateJson.errors.map(error => error.stack);
       let error = new ExpressError(listOfErrors, 400);
       return next(error)
     }
-    if (isEmpty(req.body)) {
-      throw new ExpressError('Required info to create a new company is missing', 400);
-    }
+
     const user = await User.register(req.body);
     const token = createToken(user);
-    // debugger;
     return res.status(201).json({token});
   } catch (error) {
     return next(error)
@@ -48,6 +47,7 @@ router.post('/', async (req, res, next) => {
  */
 router.get('/', authRequired, async (req, res, next) => {
   try {
+
     const users = await User.getAll();
     return res.json({users})
 
@@ -65,9 +65,7 @@ router.get('/', authRequired, async (req, res, next) => {
 router.get('/:username', authRequired, async (req, res, next) => {
   try {
     const username = req.params.username;
-    // debugger;
     const user = await User.getUser(username);
-    // debugger;
     return res.json({user})
   } catch (error) {
     return next(error)
@@ -81,25 +79,26 @@ router.get('/:username', authRequired, async (req, res, next) => {
  */
 router.patch('/:username', ensureCorrectUser, async (req, res, next) => {
   try {
-    debugger
+    debugger;
+    if ('username' in req.body || 'is_admin' in req.body) {
+      throw new ExpressError(
+        'You are not allowed to change username or is_admin properties.',
+        400);
+    } 
     const username = req.params.username;
-    const validateJson = jsonschema.validate(req.body, userSchema);
+    const validateJson = jsonschema.validate(req.body, userUpdateSchema);
     if (!validateJson.valid) {
       //pass validation errors to error handler
       let listOfErrors = validateJson.errors.map(error => error.stack);
       let error = new ExpressError(listOfErrors, 400);
       return next(error)
     }
-    if (isEmpty(req.body)) {
-      throw new ExpressError('Required info to update a user is missing', 400);
-    } else {
       const user = await User.update(username, req.body);
       // debugger;
       return res.json({user});
-    }
-    
+
   } catch (error) {
-    
+      return next(error)
   }
 });
 

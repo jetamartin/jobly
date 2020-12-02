@@ -37,7 +37,7 @@ function sqlForPartialUpdate(table, items, key, id) {
 
   let values = Object.values(items);
   values.push(id);
-
+  // debugger;
   return { query, values };
 }
 

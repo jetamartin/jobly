@@ -3,48 +3,49 @@ process.env.NODE_ENV = "test"
 const request = require("supertest");
 const { get } = require("../../app");
 
-
 const app = require("../../app");
 const db = require("../../db");
-// const { TestScheduler } = require("jest");
-// const { expect } = require("@jest/globals");
 
-let handleVal;
+const {
+  TESTDATA, 
+  beforeEachHook, 
+  afterEachHook, 
+  afterAllHook} = require('./config');
 
 beforeEach(async () => {
-  let results = await db.query(`
-  INSERT INTO
-    companies (handle, name, num_employees, description, logo_url)
-    VALUES(
-      'T1',
-      'Test Company 1',
-      50,
-      'Just a test case company',
-      'www.test1_url.com'
-    )
-    RETURNING handle, num_employees, description
-  `)
- 
-  handleVal = results.rows[0].handle
+  await beforeEachHook(TESTDATA);
 });
 
 afterEach(async function () {
-  await db.query("DELETE FROM companies");
+  await afterEachHook();
 });
-
 
 afterAll(async function () {
-  await db.end()
+  await afterAllHook();
 });
+
+
 
 // GET  - Retrieve all companies
 describe('GET /companies', () => {
   test("Retrieve all companies", async () => {
+    jest.setTimeout(3 * 60 * 1000)
     const results = await request(app)
     .get('/companies')
+    .send({
+      _token: TESTDATA.userToken
+    });
     expect(results.statusCode).toBe(200);
-    // expect(results.body.companies[0]).toHaveProperty("handle");
-    expect(results.body.companies[0].handle).toEqual("T1");
+    expect(results.body.companies[0].handle).toEqual("CW");
+  })
+  test("Retrieve company based on search criteria", async () => {
+    const results = await request(app)
+    .get("/companies?search=Costco")
+    .send({
+      _token: TESTDATA.userToken
+    });
+    expect(results.statusCode).toBe(200);
+    expect(results.body.companies[0].name).toEqual("Costco Wholesale Inc.");
   })
 
 })
@@ -58,10 +59,24 @@ describe('POST /companies', () => {
       name: 'Test 2 company',
       num_employees: 1000,
       description: 'Test 2 company description',
-      logo_url: 'www.T2_url.com'
+      logo_url: 'www.T2_url.com', 
+      _token: TESTDATA.userToken
     });
     expect(results.statusCode).toBe(201);
     expect(results.body.company.handle).toEqual("T2");
+  })
+  test('Prevents creating a company with duplicate handle', async () => {
+    const results = await request(app)
+    .post('/companies')
+    .send({
+      handle: 'CW',
+      name: 'Test 2 company',
+      num_employees: 1000,
+      description: 'Test 2 company description',
+      logo_url: 'www.T2_url.com', 
+      _token: TESTDATA.userToken
+    });
+    expect(results.statusCode).toBe(400);
   })
 })
 
@@ -70,174 +85,74 @@ describe('POST /companies', () => {
 describe('GET /companies/:handle', () => {
   test("Retrieve a specific company", async () => {
     const results = await request(app)
-    .get(`/companies/${handleVal}`)
+    .get(`/companies/${TESTDATA.currentCompany.handle}`)
+    .send({
+      _token: TESTDATA.userToken
+    })
     expect(results.statusCode).toBe(200);
-    expect(results.body.company.handle).toEqual("T1");
+    expect(results.body.company.handle).toEqual("CW");
+  })
+  test("Generates 404 if company cannot be found", async () => {
+    const results = await request(app)
+    .get(`/companies/XX`)
+    .send({
+      _token: TESTDATA.userToken
+    })
+    expect(results.statusCode).toBe(404);
   })
 })
 
 // PATCH - Update a company 
 describe('PATCH /companies/:handle', () => {
-  test("Update a field of an existing company", async () => {
+  test("Update num_employees from 1000 to 1500", async () => {
+    debugger;
     const results = await request(app)
-    .patch(`/companies/${handleVal}`)
+    .patch(`/companies/${TESTDATA.currentCompany.handle}`)
     .send({
-      name: 'Test Company 1',
+      name: 'Costco Wholesale Inc.',
       num_employees: 1500,
-      description: 'Just a test case company',
-      logo_url: 'www.test1_url.com'
+      // description: 'Warehouse Retailer',
+      // logo_url: 'www.logo.com/cc'
+      _token: TESTDATA.userToken
     });
     expect(results.statusCode).toBe(200);
     expect(results.body.company.num_employees).toEqual(1500);
-    expect(results.body.company.handle).toEqual("T1");
+    expect(results.body.company.handle).toEqual("CW");
+  })
+  test("Prevent an invalid update caused by failing to provide requred param (company_name)", async () => {
+    const results = await request(app)
+    .patch(`/companies/${TESTDATA.currentCompany.handle}`)
+    .send({
+      num_employees: 1500,
+      description: 'Warehouse Retailer',
+      logo_url: 'www.logo.com/cc',
+      _token: TESTDATA.userToken
+    });
+    expect(results.statusCode).toBe(400);
   })
 })
 
 // DElETE - Remove a company from the database
 
-describe('DELETE /companies/:handle', async () => {
+describe('DELETE /companies/:handle', () => {
   test("Delete a company", async () => {
     const results = await request(app)
-    .delete(`/companies/${handleVal}`)
+    .delete(`/companies/${TESTDATA.currentCompany.handle}`)
+    .send({
+      _token: TESTDATA.userToken
+    });
     expect(results.statusCode).toBe(200);
-    expect(results.body.message).toBe('Company Deleted')
+    expect(results.body.message).toBe('Company Deleted');
+  })
+  test("Responds with 404 if company can't be found", async () => {
+    const results = await request(app)
+    .delete(`/companies/XX`)
+    .send({
+      _token: TESTDATA.userToken
+    });
+    expect(results.statusCode).toBe(404);
   })
 })
 
 
 
-// let book_isbn;
-
-// beforeEach(async () => {
-//   let result = await db.query(`
-//     INSERT INTO
-//      books (isbn, amazon_url, author, language, pages, publisher, title, year)
-//      VALUES(
-//        '4937989888',
-//        'https://amazon.com/cat_stories',
-//        'Katmandu',
-//        'english',
-//        199,
-//        'Animal Express Publishing',
-//        'Your cat can be wonderful',
-//        2017
-//       )
-//       RETURNING isbn
-//   `);
-//   book_isbn = result.rows[0].isbn
-// });
-
-// afterEach(async function () {
-//   console.log('======>>> afterEACH - DELETE FROM BOOKS')
-//   await db.query("DELETE FROM BOOKS");
-// });
-
-
-// afterAll(async function () {
-//   await db.end()
-// });
-
-// describe('GET /books', () => {
-//   test("Get all books", async () => {
-//     const response = await request(app)
-//     .get('/books')
-//     expect(response.statusCode).toBe(200);
-//     expect(response.body.books[0]).toHaveProperty("isbn")
-//   })
-//   test("Get a specific book by isbn#", async () => {
-//     const response = await request(app)
-//     .get(`/books/${book_isbn}`)
-//     expect(response.statusCode).toBe(200);
-//     expect(response.body.book.isbn).toEqual(`${book_isbn}`)
-//   })
-//   test("If book with isbn not found", async () => {
-//     const response = await request(app)
-//     .get('/books/123433')
-//     expect(response.statusCode).toBe(404)
-//   })
-// })
-
-
-
-// describe('POST /books', () => {
-//   test("Creates a new book", async () => {
-//     const response = await request(app)
-//     .post('/books')
-//     .send({
-//       isbn: '123456789',
-//       amazon_url: 'https:amazon.com/cats123',
-//       author: "test1",
-//       language: "english", 
-//       pages: 1000,
-//       publisher: "Aticus Publishing",
-//       title:"The mysterious life of cats",
-//       year: 2020
-//     });
-//   expect(response.statusCode).toBe(201)
-//   expect(response.body.book).toHaveProperty("isbn")
-//   })
-
-//   test("Prevents creating book with missing required fields ", async () => {
-//     const response = await request(app)
-//       .post(`/books`)
-//       .send({publisher: 'XYZ publishing'});
-//     expect(response.statusCode).toBe(400)
-
-//   });
-// }) 
-
-// describe('PUT /books/:id', () => {
-//   test("Update title of existing book", async () => {
-//     const response = await request(app)
-//     .put(`/books/${book_isbn}`)
-//     .send({
-//       amazon_url: 'https://amazon.com/cat_stories',
-//       author: 'Katmandu',
-//       language: 'english',
-//       pages: 199,
-//       publisher: 'Animal Express Publishing',
-//       title: "Your cat can be wonderful but challenging",
-//       year: 2017
-//       }) 
-//       expect(response.statusCode).toBe(200);
-//       expect(response.body.book.title).toBe("Your cat can be wonderful but challenging")
-//   })
-//   test("Don't allow book to be updated if book contains invalid fields", async()=>{
-//     const response = await request(app)
-//     .put(`/books/${book_isbn}`)
-//     .send({
-//       amazon_url: 'https://amazon.com/dog_stories',
-//       author: 'DogMandu',
-//       invalid_field: "This field is invalid", 
-//       language: 'english',
-//       pages: 188,
-//       publisher: 'Animal Express Publishing',
-//       title: "Your Dog may be smarter than you",
-//       year: 2018
-//     });
-//     expect(response.statusCode).toBe(400)
-//   })
-//   test("Don't allow book update if isbn also included in body", async () => {
-//     const response = await request(app)
-//     .put(`/books/${book_isbn}`)
-//     .send({
-//       isbn: '122223333333'
-//     })
-//     expect(response.statusCode).toBe(400);
-//     expect(response.body.error.message).toBe("ISBN cannot be included in data submitted for book")
-//   })
-
-// })
-// describe('/DELETE /book/:isbn', () => {
-//   test("Successful deletion of an existing book", async() => {
-//     const response = await request(app)
-//     .delete(`/books/${book_isbn}`)
-//     expect(response.statusCode).toBe(200);
-//     expect(response.body.message).toBe('Book deleted')
-//   })
-//   test("Error message if book with id can't be found", async() => {
-//     const response = await request(app)
-//     .delete(`/books/1234896`)
-//     expect(response.statusCode).toBe(404);
-//   })
-// })

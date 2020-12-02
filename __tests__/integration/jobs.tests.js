@@ -1,66 +1,54 @@
 process.env.NODE_ENV = "test"
 const request = require("supertest");
-const { get } = require("../../app");
-
-
+// const { get } = require("../../app");
 const app = require("../../app");
 const db = require("../../db");
-// const { TestScheduler } = require("jest");
-// const { expect } = require("@jest/globals");
 
-let idVal;
+const {
+  TESTDATA, 
+  beforeEachHook, 
+  afterEachHook, 
+  afterAllHook} = require('./config');
 
 beforeEach(async () => {
-  try {
-    const companyResults = await request(app)
-    .post('/companies')
-    .send({
-      handle: 'NF',
-      name: 'NetFlix Inc.',
-      num_employees: 1000,
-      description: 'Streaming video service',
-      logo_url: 'www.NF_url.com'
-    });
-
-    let jobResults = await db.query(`
-    INSERT INTO
-      jobs (title, salary, equity, company_handle)
-      VALUES(
-        'Full Stack Web Developer',
-        100000,
-        0.50,
-        'NF'
-      )
-      RETURNING id, title, salary, equity, company_handle
-    `);
-  
-    idVal = jobResults.rows[0].id
-  } catch (error) {
-    return error;
-  }
-
+  await beforeEachHook(TESTDATA);
 });
 
 afterEach(async function () {
-  await db.query('DELETE FROM jobs');
+  await afterEachHook();
 });
-
 
 afterAll(async function () {
-  await db.end()
+  await afterAllHook();
 });
+
+
 
 // GET  - Retrieve all jobs
 describe('GET /jobs', () => {
   test("Retrieve all jobs", async () => {
     const results = await request(app)
     .get('/jobs')
+    .send({
+      "_token": TESTDATA.userToken
+    });
     expect(results.statusCode).toBe(200);
-    // expect(results.body.jobs[0]).toHaveProperty("title");
-    expect(results.body.jobs[0].title).toEqual("Full Stack Web Developer");
+    expect(results.body.jobs[0].title).toEqual("Software Eng");
   })
+  test("Retrieve job based on search criteria (name)", async () => {
+    const results = await request(app)
+    .get("/jobs?search=Software Eng")
+    .send({
+      _token: TESTDATA.userToken
+    });
+    expect(results.statusCode).toBe(200);
+    expect(results.body.jobs[0].title).toEqual("Software Eng");
+  })
+
 })
-// POST - Add a company
+
+
+// POST - Add a new job
 describe('POST /jobs', () => {
   test("Add a job", async () => {
     const results = await request(app)
@@ -69,10 +57,22 @@ describe('POST /jobs', () => {
       title: 'Web Designer',
       salary: 80000,
       equity: 0.30,
-      company_handle: 'NF'
+      company_handle: 'CW',
+      _token: TESTDATA.userToken
     });
     expect(results.statusCode).toBe(201);
     expect(results.body.job.title).toEqual("Web Designer");
+  })
+  test("Prevents creating a job without required title field", async () => {
+    const results = await request(app)
+    .post('/jobs')
+    .send({
+      salary: 80000,
+      equity: 0.30,
+      company_handle: 'CW',
+      _token: TESTDATA.userToken
+    });
+    expect(results.statusCode).toBe(400);
   })
 })
 
@@ -81,37 +81,66 @@ describe('POST /jobs', () => {
 describe('GET /jobs/:id', () => {
   test("Retrieve a job", async () => {
     const results = await request(app)
-    .get(`/jobs/${idVal}`)
+    .get(`/jobs/${TESTDATA.currentJobId}`)
+    .send({
+      _token: TESTDATA.userToken
+    });
     expect(results.statusCode).toBe(200);
-    expect(results.body.job.title).toEqual("Full Stack Web Developer");
+    expect(results.body.job.title).toEqual("Software Eng");
+  })
+  test("Responds with a 404 if job with id can't be found", async () => {
+    const results = await request(app)
+    .get(`/jobs/99`)
+    .send({
+      _token: TESTDATA.userToken
+    });
+    expect(results.statusCode).toBe(404);
   })
 })
 
-// PATCH - Update a company 
+// PATCH - Update a job 
 describe('PATCH /jobs/:id', () => {
   test("Update a field of an existing job", async () => {
     const results = await request(app)
-    .patch(`/jobs/${idVal}`)
+    .patch(`/jobs/${TESTDATA.currentJobId}`)
     .send({
       title: 'Full Stack Web Developer',
-      salary: 120000,
-      equity: 0.30,
-      company_handle: 'NF'
+      salary: 125000,
+      equity: 0.50,
+      company_handle: 'CW',
+      _token: TESTDATA.userToken
     });
     expect(results.statusCode).toBe(200);
-    expect(results.body.job.salary).toBe("120000.00");
+    expect(results.body.job.salary).toBe("125000.00");
     expect(results.body.job.title).toEqual("Full Stack Web Developer");
+  })
+  test("Patch request responds with a 404 if it cannot find the job by id", async () => {
+    const results = await request(app)
+    .patch(`/jobs/99`)
+    .send({
+      title: 'Full Stack Web Developer',
+      salary: 125000,
+      equity: 0.50,
+      company_handle: 'CW',
+      _token: TESTDATA.userToken
+    });
+    expect(results.statusCode).toBe(404);
   })
 })
 
-// // DElETE - Remove a job from the database
-
-describe('DELETE /jobs/:id', async () => {
+// DElETE - Remove a job from the database
+describe('DELETE /jobs/:id', () => {
   test("Delete a job", async () => {
-    debugger;
     const results = await request(app)
-    .delete(`/jobs/${idVal}`)
+    .delete(`/jobs/${TESTDATA.currentJobId}`)
+    .send({_token: TESTDATA.userToken})
     expect(results.statusCode).toBe(200);
     expect(results.body.message).toEqual('Job Deleted')
+  })
+  test("Responds with a 404 if it cannot find the job by id", async () => {
+    const results = await request(app)
+    .delete(`/jobs/0`)
+    .send({_token: TESTDATA.userToken})
+    expect(results.statusCode).toBe(404);
   })
 })
